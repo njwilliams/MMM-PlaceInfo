@@ -21,27 +21,76 @@ Module.register('MMM-PlaceInfo',{
         layoutStyle: "table",
         showFlag: true,
         showText: true,
+
+        // would make this more structured, but the config is not merged from the
+        // the user config file, but replaces things, so the whole structure would be
+        // blitzed if the user wanted to change one property.
         weatherUnits: config.units,
-        weatherAPI: "https://api.openwathermap.org/data/",
-        weatherAPIEndpoint: "weather",
+        weatherAPI: "https://api.openweathermap.org/data/",
+        weatherAPIEndpoint: "group",
         weatherAPIVersion: "2.5",
         weatherAPIKey: "",
+        weatherInterval: 10*60*1000, // every 10 minutes. Allowed 60calls/min
+        weatherLoadDelay: 0,
+        weatherRetryDelay: 2500,
+        weatherPrecision: 0,
+
+        weatherIcons: {
+            "01d": "wi-day-sunny",
+            "02d": "wi-day-cloudy",
+            "03d": "wi-cloudy",
+            "04d": "wi-cloudy-windy",
+            "09d": "wi-showers",
+            "10d": "wi-rain",
+            "11d": "wi-thunderstorm",
+            "13d": "wi-snow",
+            "50d": "wi-fog",
+            "01n": "wi-night-clear",
+            "02n": "wi-night-cloudy",
+            "03n": "wi-night-cloudy",
+            "04n": "wi-night-cloudy",
+            "09n": "wi-night-showers",
+            "10n": "wi-night-rain",
+            "11n": "wi-night-thunderstorm",
+            "13n": "wi-night-snow",
+            "50n": "wi-night-alt-cloudy-windy"
+        },
+
         currencyAPI: "http://data.fixer.io/api/latest",                
         currencyBase: "EUR", // cannot change, unless you're using a paid-up plan.
-        currencyRelativeTo: "USD",
+        currencyRelativeTo: "EUR",
         currencyPrecision: 3, // how many decimal places
+        currencyInterval: 2*60*60*1000, // 2hr. don't want frequent since free limit is 2k/mon
+        currencyLoadDelay: 0,
+        currencyRetryDelay: 2500,
+
+        // Example place
         places: [
           {
             title: "New York",
             timezone: "America/New_York",
             flag: "us",
-            currency: "USD"
+            currency: "USD",
+            weatherID: 5128581
           }
         ]
     },
+
+    state: {
+        weather: {
+            timer: undefined,
+            values: {}, // results of lookup
+            loaded: false,
+        },
+        currency: {
+            timer: undefined,
+            values: {}, // results of currency lookup
+            loaded: false,
+        },
+    },
     
     getScripts: function() {
-        return ["moment.js"];
+        return ["weather-icons.css", "moment.js"];
     },
 
     getStyles: function() {
@@ -70,13 +119,24 @@ Module.register('MMM-PlaceInfo',{
     },
 
     start: function() {
-        Log.info('Starting module: ' + this.name);
+        Log.info(this.name + ': Starting module');
+        this.badness = 10;
         this.loadCSS();
 
+        this.state.weather.fn = this.updateWeather;
+        this.state.weather.interval = this.config.weatherInterval;
+        this.state.currency.fn = this.updateCurrencies;
+        this.state.currency.interval = this.config.currencyInterval;
+
         if (!this.config.currencyAPIKey) {
-            Log.error("No API key for currencies: disabling currency lookup");
+            Log.info(this.name + ": No API key for currencies: disabling currency lookup");
         } else {
-            this.updateCurrencies();
+            this.scheduleUpdate(this.state.currency, this.config.currencyLoadDelay);
+        }
+        if (!this.config.weatherAPIKey) {
+            Log.info(this.name + ": No API key for weather: disabling weather lookup");
+        } else {
+            this.scheduleUpdate(this.state.weather, this.config.weatherLoadDelay);
         }
 
         // guarantee that we always have a valid base
@@ -98,7 +158,7 @@ Module.register('MMM-PlaceInfo',{
         if (this.config.showCustomHeader) {
             var customHeader = document.createElement('div');
             currencyInfo = "";
-            if (!this.config.CurrencyAPIKey) {
+            if (!this.config.currencyAPIKey) {
                 currencyInfo += "Currency data disabled (no API key)\n";
             } else {
                 if (this.hasOwnProperty("rateUpdate")) {
@@ -111,7 +171,7 @@ Module.register('MMM-PlaceInfo',{
                 }
             }
             customHeader.innerHTML = currencyInfo;
-            customHeader.className = "light small UNDERLINE";
+            customHeader.className = "light small";
             wrapper.appendChild(customHeader);
         }
 
@@ -122,10 +182,9 @@ Module.register('MMM-PlaceInfo',{
 
         if (this.config.layoutStyle == 'table') {
             var table = document.createElement('table');
-            table.className = "small align-left";
+            table.className = "placetable";
         }
 
-        // about to change this to places
         for (var placeIdx in this.config.places) {
             var place = this.config.places[placeIdx];
             if (this.config.layoutStyle == 'table') {
@@ -164,14 +223,50 @@ Module.register('MMM-PlaceInfo',{
 
             // determine if user wants to see the abbreviated currency text (EUR, USD, ..)
             if (place.currency != "") {
-                var currencySpan = document.createElement('span');
-                if (this.rates && this.rates.hasOwnProperty(place.currency)) {
-                    currencySpan.innerHTML = place.currency + ": " + this.rates[place.currency];
+                var currencySpan = document.createElement('div');
+                currencySpan.className = "currency";
+                if (this.state.currency.values && this.state.currency.values.hasOwnProperty(place.currency)) {
+                    currencySpan.innerHTML = place.currency + ": " + this.state.currency.values[place.currency];
                 } else {
                     currencySpan.innerHTML = "No data";
-                    currencySpan.className = "dimmed light small";
+                    currencySpan.className = "currency dimmed light small";
                 }
                 placeContainer.appendChild(currencySpan);            
+            }
+
+            if (place.weatherID) {
+                var weatherSpan = document.createElement('div');
+                weatherSpan.className = "weather";
+                if (!this.state.weather || !this.state.weather.values[placeIdx]) {
+                    weatherSpan.innerHTML = "No data";
+                    weatherSpan.className = "weather dimmed light small";
+                } else {
+                    var weather = this.state.weather.values[placeIdx];
+                    var weatherIcon = document.createElement("span");
+                    var icon = this.config.weatherIcons[weather.weather[0].icon];
+                    weatherIcon.className = "wi weathericon " + icon;
+                    weatherSpan.appendChild(weatherIcon);
+
+                    var degreeLabel = "";
+                    if (this.config.degreeLabel) {
+                        switch (this.config.units ) {
+                        case "metric":
+                            degreeLabel = "C";
+                            break;
+                        case "imperial":
+                            degreeLabel = "F";
+                            break;
+                        case "default":
+                            degreeLabel = "K";
+                            break;
+                        }
+                    }
+                    var weatherTemp = document.createElement('span');
+                    weatherTemp.innerHTML = weather.main.temp.toFixed(this.config.weatherPrecision) + "&deg;" + degreeLabel;
+
+                    weatherSpan.appendChild(weatherTemp);
+                }
+                placeContainer.appendChild(weatherSpan);            
             }
 
             // if the user wants a table, we add the dataset to a cell. If this is the last dataset for a row or the final dataset we add the row to the table 
@@ -210,6 +305,7 @@ Module.register('MMM-PlaceInfo',{
         }
         var url = this.config.weatherAPI + this.config.weatherAPIVersion + "/" + this.config.weatherAPIEndpoint + params;
         var self = this;
+        var retry = true;
         console.log(this.name + ": weather request(" + url + ")");
         var weatherRequest = new XMLHttpRequest();
         weatherRequest.open("GET", url, true);
@@ -219,13 +315,19 @@ Module.register('MMM-PlaceInfo',{
                     self.processWeather(JSON.parse(this.response));
                 } else if (this.status === 401) {
                     self.updateDom(self.config.animationSpeed);
-
                     Log.error(self.name + ": Incorrect APPID.");
+                    retry = false;
                 } else {
-                    Log.error(self.name + ": Could not load weather.");
+                    Log.error(self.name + ": Could not load weather: " + this.status);
                 }
+
+                if (retry) {
+                    self.scheduleUpdate(self.state.weather, (self.state.weather.loaded)? -1 : this.config.weatherRetryDelay);
+                }
+
             }
         };
+        weatherRequest.send();
     },
 
     getWeatherParams: function() {
@@ -239,18 +341,27 @@ Module.register('MMM-PlaceInfo',{
         if (Object.keys(placeIDs).length == 0) {
             return "";
         }
-        var params = "?";
-        params += "&APPID=" + this.config.weatherAPIKey
-        params += "&q=" + Object.keys(placeIDs).join();
+        var params = "?APPID=" + this.config.weatherAPIKey
+        params += "&id=" + Object.keys(placeIDs).join();
         params += "&units=" + this.config.weatherUnits;
         return params;
     },
 
     processWeather: function(data) {
-        if (!data || !data.main || typeof data.main.temp === "undefined") {
+        if (!data || !data.cnt) {
+            Log.error(this.name + ": failed to process weather data: " + JSON.stringify(data))
             return;
         }
-        console.log("received weather data: " + data);
+        this.state.weather.values = [];
+        for (var cityIdx in data.list) {
+            for (var placeIdx in this.config.places) {
+                if (this.config.places[placeIdx].hasOwnProperty("weatherID") && this.config.places[placeIdx].weatherID == data.list[cityIdx].id) {
+                    this.state.weather.values[placeIdx] = data.list[cityIdx];
+                }
+            }
+        }
+        this.state.weather.loaded = true;
+        this.updateDom(this.config.animationSpeed);
     },
 
     updateCurrencies: function() {
@@ -262,6 +373,7 @@ Module.register('MMM-PlaceInfo',{
         }
         url += params;
         var self = this;
+        var retry = true;
 
         console.log(this.name + ": currency request(" + url + ")");
         var Request = new XMLHttpRequest();
@@ -273,6 +385,7 @@ Module.register('MMM-PlaceInfo',{
                 } else {
                     Log.error(self.name + ": Could not load data.");
                 }
+                self.scheduleUpdate(self.state.currency, (self.state.currency.loaded)? -1 : this.config.currencyRetryDelay);
             }
         };
         Request.send();
@@ -307,24 +420,39 @@ Module.register('MMM-PlaceInfo',{
         }
 
         this.rateUpdate = data.date;
-        this.rates = data.rates;
+        this.state.currency.values = data.rates;
         // if we got data in a different base, we need to convert
         if (this.config.currencyBase != this.config.currencyRelativeTo) {
-            var conversion = this.rates[this.config.currencyRelativeTo];
-            for (var cur in this.rates) {
-                this.rates[cur] /= conversion;
-                this.rates[cur] = this.rates[cur].toFixed(this.config.currencyPrecision);
+            var conversion = this.state.currency.values[this.config.currencyRelativeTo];
+            if (!conversion) {
+                conversion = 1; // prevent stupidness
+            }
+            for (var cur in this.state.currency.values) {
+                this.state.currency.values[cur] /= conversion;
             }
         }
-
+        for (var cur in this.state.currency.values) {
+            this.state.currency.values[cur] = this.state.currency.values[cur].toFixed(this.config.currencyPrecision);
+        }
+        this.state.currency.loaded = true;
         this.updateDom(this.config.animationSpeed);
     },
 
-    scheduleUpdate: function() {
+    scheduleUpdate: function(cnf, delay) {
         var self = this;
-        setTimeout(function() {
-            self.updateCurrencies();
-        }, self.config.updateInterval);
+        var nextLoad = cnf.interval;
+        self.badness = self.badness - 1;
+        if (self.badness < 0) {
+            return;
+        }
+        if (typeof delay !== "undefined" && delay >= 0) {
+            nextLoad = delay;
+        }
+
+        clearTimeout(cnf.timer);
+        cnf.timer = setTimeout(function() {
+            cnf.fn.call(self);
+        }, nextLoad);
     },
 
 });

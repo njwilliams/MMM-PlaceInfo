@@ -1,15 +1,10 @@
-.NOREPEAT {
-	background-repeat: no-repeat;
-	background-position: center center;
-	padding: 0px 8px 0px 10px;
-}
-
-.UNDERLINE {
-	text-decoration: underline;
-}
 
 .MMM-PlaceInfo .flag-icon {
   border-radius: 50%;
   box-shadow:0 0 3px #FFF;
+}
+
+.MMM-PlaceInfo .placetable {
+  border-spacing: 10px;
 }
 
