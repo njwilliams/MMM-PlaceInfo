@@ -1,6 +1,7 @@
 
 .MMM-PlaceInfo .flag-icon {
   border-radius: 50%;
+  font-size: 100%;
   box-shadow:0 0 3px #FFF;
 }
 
@@ -8,3 +9,6 @@
   border-spacing: 10px;
 }
 
+.MMM-PlaceInfo .label {
+  display: inline;
+}
