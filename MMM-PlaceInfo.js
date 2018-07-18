@@ -177,7 +177,14 @@ Module.register('MMM-PlaceInfo',{
         // get ready to process data and print it to the screen
         var outputWrapper = document.createElement('div');
 
-        var dataLimit = ((this.config.places.length > 8) ? 3 : 2); 
+        var dataLimit = 3;
+        if (this.config.places.length == 4) {
+            dataLimit = 2;
+        } else if (this.config.places.length == 7) {
+            dataLimit = 4;
+        } else if (this.config.places.length > 9) {
+            dataLimit = 4;
+        }
 
         if (this.config.layoutStyle == 'table') {
             var table = document.createElement('table');
@@ -194,7 +201,6 @@ Module.register('MMM-PlaceInfo',{
                 var cell = document.createElement('td');
             }
             var placeContainer = document.createElement('span');
-            placeContainer.className = "light small";
 
             // determine if user wants to see the flag
             if (place.flag != "") {
@@ -206,6 +212,11 @@ Module.register('MMM-PlaceInfo',{
                 flagWrapper.appendChild(flagIconWrapper);
                 placeContainer.appendChild(flagWrapper);
             }
+        
+            var labelWrapper = document.createElement("span");
+            labelWrapper.className = "label bright";
+            labelWrapper.innerHTML = place.title;
+            placeContainer.appendChild(labelWrapper);
 
             var timeString;
             var clock = moment();
@@ -217,13 +228,13 @@ Module.register('MMM-PlaceInfo',{
             timeString = clock.format(this.config.timeFormat);
             var timeWrapper = document.createElement("div");
             timeWrapper.innerHTML = timeString;
-            timeWrapper.className = "time";
+            timeWrapper.className = "time small";
             placeContainer.appendChild(timeWrapper);
 
             // determine if user wants to see the abbreviated currency text (EUR, USD, ..)
             if (place.currency != "") {
                 var currencySpan = document.createElement('div');
-                currencySpan.className = "currency";
+                currencySpan.className = "currency small";
                 if (this.state.currency.values && this.state.currency.values.hasOwnProperty(place.currency)) {
                     currencySpan.innerHTML = place.currency + ": " + this.state.currency.values[place.currency];
                 } else {
