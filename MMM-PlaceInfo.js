@@ -120,7 +120,6 @@ Module.register('MMM-PlaceInfo',{
 
     start: function() {
         Log.info(this.name + ': Starting module');
-        this.badness = 10;
         this.loadCSS();
 
         this.state.weather.fn = this.updateWeather;
@@ -441,10 +440,6 @@ Module.register('MMM-PlaceInfo',{
     scheduleUpdate: function(cnf, delay) {
         var self = this;
         var nextLoad = cnf.interval;
-        self.badness = self.badness - 1;
-        if (self.badness < 0) {
-            return;
-        }
         if (typeof delay !== "undefined" && delay >= 0) {
             nextLoad = delay;
         }
