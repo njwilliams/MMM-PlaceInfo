@@ -26,17 +26,25 @@ modules: [
   module: 'MMM-PlaceInfo',
   position: 'bottom-center',
   config: {
+    weatherAPIKey: "xxxxxx Copy from currentweather xxxxxx",
+    currencyAPIKey: "xxxxx Get an API key xxxxxx",
+    currencyPrecision: 2,
     currencyRelativeTo: 'USD',
+ 
     places: [
       {
           title: "London",
+          flag: "gb",
           currency: "GBP",
           timezone: "Europe/London",
+          weatherID: "2643743",
       },
       {
           title: "Sao Paolo",
+          flag: "br",
           currency: "BRL",
           timezone: "America/Sao_Paulo",
+          weatherID: "3448439"
       }
     ]
   }
