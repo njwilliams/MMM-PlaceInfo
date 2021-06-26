@@ -57,6 +57,7 @@ Module.register("MMM-PlaceInfo", {
     currencyAPI: "http://data.fixer.io/api/latest",
     currencyBase: "EUR", // cannot change, unless you're using a paid-up plan.
     currencyRelativeTo: "EUR",
+    currencyReversed: false,
     currencyPrecision: 3, // how many decimal places
     currencyInterval: 4 * 60 * 60 * 1000, // 4hr. don't want frequent since free limit is 2k/mon
     currencyLoadDelay: 0,
@@ -121,6 +122,8 @@ Module.register("MMM-PlaceInfo", {
     Log.info(this.name + ": Starting module");
     this.loadCSS();
 
+    this.state.cstatus = "Loading"; // currency summary status
+    this.state.wstatus = "Loading"; // weather summary status
     this.state.weather.fn = this.updateWeather;
     this.state.weather.interval = this.config.weatherInterval;
     this.state.currency.fn = this.updateCurrencies;
@@ -130,6 +133,7 @@ Module.register("MMM-PlaceInfo", {
       Log.info(
         this.name + ": No API key for currencies: disabling currency lookup"
       );
+      this.state.csummary = "disabled (no API key)";
     } else {
       this.scheduleUpdate(this.state.currency, this.config.currencyLoadDelay);
     }
@@ -137,6 +141,7 @@ Module.register("MMM-PlaceInfo", {
       Log.info(
         this.name + ": No API key for weather: disabling weather lookup"
       );
+      this.state.wsummary = "disabled (no API key)";
     } else {
       this.scheduleUpdate(this.state.weather, this.config.weatherLoadDelay);
     }
@@ -247,7 +252,7 @@ Module.register("MMM-PlaceInfo", {
           currencySpan.innerHTML =
             place.currency + ": " + this.state.currency.values[place.currency];
         } else {
-          currencySpan.innerHTML = "No data";
+          currencySpan.innerHTML = "Currency " + this.state.cstatus;
           currencySpan.className = "currency dimmed light small";
         }
         placeContainer.appendChild(currencySpan);
@@ -257,7 +262,7 @@ Module.register("MMM-PlaceInfo", {
         var weatherSpan = document.createElement("div");
         weatherSpan.className = "weather";
         if (!this.state.weather || !this.state.weather.values[placeIdx]) {
-          weatherSpan.innerHTML = "No data";
+          weatherSpan.innerHTML = "Weather " + this.state.wstatus;
           weatherSpan.className = "weather dimmed light small";
         } else {
           var weather = this.state.weather.values[placeIdx];
@@ -346,10 +351,12 @@ Module.register("MMM-PlaceInfo", {
           self.processWeather(JSON.parse(this.response));
         } else if (this.status === 401) {
           self.updateDom(self.config.animationSpeed);
-          Log.error(self.name + ": Incorrect APPID.");
+          Log.error(self.name + ": Incorrect API Key for weather.");
+          self.state.wstatus = "failed (bad API key)";
           retry = false;
         } else {
           Log.error(self.name + ": Could not load weather: " + this.status);
+          self.state.wstatus = "failed (HTTP " + this.status + ")";
         }
 
         if (retry) {
@@ -385,6 +392,7 @@ Module.register("MMM-PlaceInfo", {
       Log.error(
         this.name + ": failed to process weather data: " + JSON.stringify(data)
       );
+      this.state.wstatus = "failed (" + JSON.stringify(data) + ")";
       return;
     }
     this.state.weather.values = [];
@@ -408,6 +416,7 @@ Module.register("MMM-PlaceInfo", {
     var params = this.getCurrencyParams();
     if (params == "") {
       Log.info(this.name + ": no currencies to request");
+      this.state.cstatus = "incomplete config";
       return;
     }
     url += params;
@@ -423,6 +432,7 @@ Module.register("MMM-PlaceInfo", {
           self.processCurrencies(JSON.parse(this.response));
         } else {
           Log.error(self.name + ": Could not load data.");
+          self.state.cstatus = "failed (" + this.status + ")"
         }
         self.scheduleUpdate(
           self.state.currency,
@@ -458,10 +468,10 @@ Module.register("MMM-PlaceInfo", {
       // Did not receive usable new data.
       // Maybe this needs a better check?
       Log.error(
-        self.name +
-          ": failed to process currency data, no rates " +
-          JSON.stringify(data)
+        this.name +
+          ": failed to process currency data: " + data.error.info
       );
+      this.state.cstatus = "failed (" + data.error.info + ")";
       return;
     }
 
@@ -478,6 +488,11 @@ Module.register("MMM-PlaceInfo", {
       for (var cur in this.state.currency.values) {
         this.state.currency.values[cur] /= conversion;
       }
+    }
+    if (this.config.currencyReversed) {
+        for (var cur in this.state.currency.values) {
+            this.state.currency.values[cur] = 1 / this.state.currency.values[cur];
+        }
     }
     for (var cur in this.state.currency.values) {
       this.state.currency.values[cur] = this.state.currency.values[cur].toFixed(
