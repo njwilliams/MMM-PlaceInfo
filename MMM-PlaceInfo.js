@@ -58,9 +58,9 @@ Module.register("MMM-PlaceInfo", {
     currencyBase: "EUR", // cannot change, unless you're using a paid-up plan.
     currencyRelativeTo: "EUR",
     currencyPrecision: 3, // how many decimal places
-    currencyInterval: 2 * 60 * 60 * 1000, // 2hr. don't want frequent since free limit is 2k/mon
+    currencyInterval: 4 * 60 * 60 * 1000, // 4hr. don't want frequent since free limit is 2k/mon
     currencyLoadDelay: 0,
-    currencyRetryDelay: 2500,
+    currencyRetryDelay: 60 * 60 * 1000, // retry hourly if something is broken
 
     // Example place
     places: [
@@ -404,6 +404,7 @@ Module.register("MMM-PlaceInfo", {
 
   updateCurrencies: function () {
     var url = this.config.currencyAPI;
+    var delay = this.config.currencyRetryDelay;
     var params = this.getCurrencyParams();
     if (params == "") {
       Log.info(this.name + ": no currencies to request");
@@ -425,7 +426,7 @@ Module.register("MMM-PlaceInfo", {
         }
         self.scheduleUpdate(
           self.state.currency,
-          self.state.currency.loaded ? -1 : this.config.currencyRetryDelay
+          self.state.currency.loaded ? -1 : delay
         );
       }
     };
