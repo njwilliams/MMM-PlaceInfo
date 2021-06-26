@@ -13,7 +13,7 @@ Module.register("MMM-PlaceInfo", {
     units: config.units,
     animationSpeed: 1000,
     updateInterval: 1000 * 3600, //update every hour
-    timeFormat: config.timeFormat,
+    timeFormat: "HH:mm A",
     lang: config.language,
     showCustomHeader: false,
     layoutStyle: "table",
