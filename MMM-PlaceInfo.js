@@ -54,7 +54,7 @@ Module.register("MMM-PlaceInfo", {
       "50n": "wi-night-alt-cloudy-windy"
     },
 
-    currencyAPI: "http://data.fixer.io/api/latest",
+    currencyAPI: "https://api.apilayer.com/fixer/latest",
     currencyBase: "EUR", // cannot change, unless you're using a paid-up plan.
     currencyRelativeTo: "EUR",
     currencyReversed: false,
@@ -457,7 +457,7 @@ Module.register("MMM-PlaceInfo", {
     if (this.config.currencyBase != this.config.currencyRelativeTo) {
       currencies[this.config.currencyRelativeTo] = 1;
     }
-    params = "?access_key=" + this.config.currencyAPIKey;
+    params = "?apikey=" + this.config.currencyAPIKey;
     params += "&base=" + this.config.currencyBase;
     params += "&symbols=" + Object.keys(currencies).join();
     return params;
