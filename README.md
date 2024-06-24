@@ -78,5 +78,5 @@ Each place should have the following attributes:
 |timezone|The timezone of the location, will affect the clock time shown for each place|
 |flag|Two letter code for the country|
 |currency|Three letter code for the currency (see fixer.io)|
-|weatherID|A location identifier for the place, as per openweathermap.org|
+|weatherID|A location identifier for the place, as found within openweathermap.org - look up the location and the ID is the end of the URL|
 
