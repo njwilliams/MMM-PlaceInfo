@@ -53,29 +53,6 @@ Module.register("MMM-PlaceInfo", {
       "13n": "wi-night-snow",
       "50n": "wi-night-alt-cloudy-windy"
     },
-    
-    useAnimatedIcons: false,
-    iconDirectory: "modules/MMM-PlaceInfo/icons/",
-    animatedWeatherIcons: {
-      "01d": "clear-day.svg",
-      "02d": "cloudy-1-day.svg",
-      "03d": "cloudy.svg",
-      "04d": "cloudy.svg",
-      "09d": "rainy-2-day.svg",
-      "10d": "rainy-3-day.svg",
-      "11d": "scattered-thunderstorms-day.svg",
-      "13d": "snowy-3-day.svg",
-      "50d": "fog-day.svg",
-      "01n": "clear-night.svg",
-      "02n": "cloudy-1-night.svg",
-      "03n": "cloudy.svg",
-      "04n": "cloudy.svg",
-      "09n": "rainy-2-night.svg",
-      "10n": "rainy-3-night.svg",
-      "11n": "scattered-thunderstorms-night.svg",
-      "13n": "snowy-3-night.svg",
-      "50n": "fog-night.svg"
-    },
 
     currencyAPI: "http://data.fixer.io/api/latest",
     currencyBase: "EUR", // cannot change, unless you're using a paid-up plan.
@@ -289,25 +266,10 @@ Module.register("MMM-PlaceInfo", {
           weatherSpan.className = "weather dimmed light small";
         } else {
           var weather = this.state.weather.values[placeIdx];
-          
-          if (this.config.useAnimatedIcons) {
-             var weatherIcon = document.createElement("img");
-             var iconName = this.config.animatedWeatherIcons[weather.weather[0].icon];
-             if (!iconName) { 
-                 iconName = "unknown.svg"; 
-             }
-             weatherIcon.src = this.config.iconDirectory + iconName;
-             weatherIcon.className = "weathericon";
-             weatherIcon.style.verticalAlign = "middle";
-             weatherIcon.style.width = "30px";
-             weatherIcon.style.height = "30px";
-             weatherSpan.appendChild(weatherIcon);
-          } else {
-             var weatherIcon = document.createElement("span");
-             var icon = this.config.weatherIcons[weather.weather[0].icon];
-             weatherIcon.className = "wi weathericon " + icon;
-             weatherSpan.appendChild(weatherIcon);
-          }
+          var weatherIcon = document.createElement("span");
+          var icon = this.config.weatherIcons[weather.weather[0].icon];
+          weatherIcon.className = "wi weathericon " + icon;
+          weatherSpan.appendChild(weatherIcon);
 
           var degreeLabel = "";
           if (this.config.degreeLabel) {
