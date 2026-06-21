@@ -16,7 +16,7 @@ The currency exchange information comes from http://fixer.io (requires API key).
 
 ## Installation
 
-Open a terminal session, navigate to your MagicMirror's `modules` folder and execute `git clone https://github.com/njw/MMM-PlaceInfo.git`, a new folder called MMM-PlaceInfo will be created.
+Open a terminal session, navigate to your MagicMirror's `modules` folder and execute `git clone https://github.com/njwilliams/MMM-PlaceInfo`, a new folder called MMM-PlaceInfo will be created.
 
 Activate the module by adding it to the config.js file as shown below.
 
