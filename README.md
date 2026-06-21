@@ -39,14 +39,16 @@ modules: [
           flag: "gb",
           currency: "GBP",
           timezone: "Europe/London",
-          weatherID: "2643743",
+          lat: 51.5085,
+          lon: -0.1257,
       },
       {
           title: "Sao Paolo",
           flag: "br",
           currency: "BRL",
           timezone: "America/Sao_Paulo",
-          weatherID: "3448439"
+          lat: -23.5475,
+          lon: -46.6361
       }
     ]
   }
@@ -78,5 +80,6 @@ Each place should have the following attributes:
 |timezone|The timezone of the location, will affect the clock time shown for each place|
 |flag|Two letter code for the country|
 |currency|Three letter code for the currency (see fixer.io)|
-|weatherID|A location identifier for the place, as found within openweathermap.org - look up the location and the ID is the end of the URL|
+|lat|The latitude of the place (decimal degrees), used to look up the weather from openweathermap.org|
+|lon|The longitude of the place (decimal degrees), used to look up the weather from openweathermap.org|
 

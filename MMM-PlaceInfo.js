@@ -25,7 +25,7 @@ Module.register("MMM-PlaceInfo", {
     // blitzed if the user wanted to change one property.
     weatherUnits: config.units,
     weatherAPI: "https://api.openweathermap.org/data/",
-    weatherAPIEndpoint: "group",
+    weatherAPIEndpoint: "weather",
     weatherAPIVersion: "2.5",
     weatherAPIKey: "",
     weatherInterval: 10 * 60 * 1000, // every 10 minutes. Allowed 60calls/min
@@ -70,7 +70,8 @@ Module.register("MMM-PlaceInfo", {
         timezone: "America/New_York",
         flag: "us",
         currency: "USD",
-        weatherID: 5128581
+        lat: 40.7143,
+        lon: -74.006
       }
     ]
   },
@@ -258,7 +259,7 @@ Module.register("MMM-PlaceInfo", {
         placeContainer.appendChild(currencySpan);
       }
 
-      if (place.weatherID) {
+      if (this.hasWeatherCoords(place)) {
         var weatherSpan = document.createElement("div");
         weatherSpan.className = "weather";
         if (!this.state.weather || !this.state.weather.values[placeIdx]) {
@@ -328,84 +329,106 @@ Module.register("MMM-PlaceInfo", {
     return wrapper;
   },
 
+  hasWeatherCoords: function (place) {
+    return (
+      place &&
+      place.lat !== undefined &&
+      place.lat !== null &&
+      place.lon !== undefined &&
+      place.lon !== null
+    );
+  },
+
   updateWeather: function () {
-    var params = this.getWeatherParams();
-    if (params == "") {
+    // The OpenWeatherMap "group" endpoint (lookup by city ID) is no longer
+    // available, so we request the current weather for each place using its
+    // latitude and longitude. Each call returns a single location, so we fire
+    // one request per place and track when they have all completed.
+    var self = this;
+    var places = [];
+    for (var placeIdx in this.config.places) {
+      var place = this.config.places[placeIdx];
+      if (this.hasWeatherCoords(place)) {
+        places.push({ idx: placeIdx, place: place });
+      }
+    }
+    if (places.length == 0) {
       console.log(this.name + ": no weathers to request");
       return;
     }
+
+    this.state.weather.pending = places.length;
+    this.state.weather.shouldRetry = false;
+    this.state.weather.badKey = false;
+    places.forEach(function (p) {
+      self.requestWeather(p.idx, p.place);
+    });
+  },
+
+  requestWeather: function (placeIdx, place) {
     var url =
       this.config.weatherAPI +
       this.config.weatherAPIVersion +
       "/" +
       this.config.weatherAPIEndpoint +
-      params;
+      this.getWeatherParams(place);
     var self = this;
-    var retry = true;
     console.log(this.name + ": weather request(" + url + ")");
     var weatherRequest = new XMLHttpRequest();
     weatherRequest.open("GET", url, true);
     weatherRequest.onreadystatechange = function () {
-      if (this.readyState === 4) {
-        if (this.status === 200) {
-          self.processWeather(JSON.parse(this.response));
-        } else if (this.status === 401) {
-          self.updateDom(self.config.animationSpeed);
-          Log.error(self.name + ": Incorrect API Key for weather.");
-          self.state.wstatus = "failed (bad API key)";
-          retry = false;
-        } else {
-          Log.error(self.name + ": Could not load weather: " + this.status);
-          self.state.wstatus = "failed (HTTP " + this.status + ")";
-        }
-
-        if (retry) {
-          self.scheduleUpdate(
-            self.state.weather,
-            self.state.weather.loaded ? -1 : this.config.weatherRetryDelay
-          );
-        }
+      if (this.readyState !== 4) {
+        return;
       }
+      if (this.status === 200) {
+        self.processWeather(placeIdx, JSON.parse(this.response));
+      } else if (this.status === 401) {
+        Log.error(self.name + ": Incorrect API Key for weather.");
+        self.state.wstatus = "failed (bad API key)";
+        self.state.weather.badKey = true;
+        self.updateDom(self.config.animationSpeed);
+      } else {
+        Log.error(self.name + ": Could not load weather: " + this.status);
+        self.state.wstatus = "failed (HTTP " + this.status + ")";
+        self.state.weather.shouldRetry = true;
+      }
+      self.onWeatherComplete();
     };
     weatherRequest.send();
   },
 
-  getWeatherParams: function () {
-    var placeIDs = {};
-    for (var placeIdx in this.config.places) {
-      var place = this.config.places[placeIdx];
-      if (place.weatherID) {
-        placeIDs[place.weatherID] = 1;
-      }
+  onWeatherComplete: function () {
+    this.state.weather.pending -= 1;
+    if (this.state.weather.pending > 0) {
+      return;
     }
-    if (Object.keys(placeIDs).length == 0) {
-      return "";
+    // Don't keep hammering the API if the key is bad.
+    if (this.state.weather.badKey) {
+      return;
     }
+    var delay = this.config.weatherRetryDelay;
+    if (this.state.weather.loaded || !this.state.weather.shouldRetry) {
+      delay = -1; // use the regular interval
+    }
+    this.scheduleUpdate(this.state.weather, delay);
+  },
+
+  getWeatherParams: function (place) {
     var params = "?APPID=" + this.config.weatherAPIKey;
-    params += "&id=" + Object.keys(placeIDs).join();
+    params += "&lat=" + place.lat + "&lon=" + place.lon;
     params += "&units=" + this.config.weatherUnits;
     return params;
   },
 
-  processWeather: function (data) {
-    if (!data || !data.cnt) {
+  processWeather: function (placeIdx, data) {
+    if (!data || !data.weather || !data.main) {
       Log.error(
         this.name + ": failed to process weather data: " + JSON.stringify(data)
       );
       this.state.wstatus = "failed (" + JSON.stringify(data) + ")";
       return;
     }
-    this.state.weather.values = [];
-    for (var cityIdx in data.list) {
-      for (var placeIdx in this.config.places) {
-        if (
-          this.config.places[placeIdx].hasOwnProperty("weatherID") &&
-          this.config.places[placeIdx].weatherID == data.list[cityIdx].id
-        ) {
-          this.state.weather.values[placeIdx] = data.list[cityIdx];
-        }
-      }
-    }
+    this.state.weather.values[placeIdx] = data;
     this.state.weather.loaded = true;
     this.updateDom(this.config.animationSpeed);
   },
