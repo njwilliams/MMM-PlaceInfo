@@ -1,0 +1,12 @@
+{
+  "name": "mmm-placeinfo",
+  "version": "1.0.0",
+  "description": "MagicMirror² module for displaying place, weather, currency, and time information.",
+  "license": "MIT",
+  "keywords": [
+    "MagicMirror",
+    "weather",
+    "currency",
+    "place"
+  ]
+}
