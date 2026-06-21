@@ -16,46 +16,51 @@ The currency exchange information comes from http://fixer.io (requires API key).
 
 ## Installation
 
-Open a terminal session, navigate to your MagicMirror's `modules` folder and execute `git clone https://github.com/njwilliams/MMM-PlaceInfo`, a new folder called MMM-PlaceInfo will be created.
+Open a terminal session, navigate to your MagicMirror's `modules` directory and execute `git clone https://github.com/njwilliams/MMM-PlaceInfo`, a new directory called MMM-PlaceInfo will be created.
 
 Activate the module by adding it to the config.js file as shown below.
 
-## Using the module
+## Update
+
+To update the module, navigate to the MMM-PlaceInfo directory and execute `git pull` to pull the latest changes from the repository.
+
+## Configuration
+
+### Example configuration
 
 ```javascript
-modules: [
-{
-  module: 'MMM-PlaceInfo',
-  position: 'bottom-center',
-  config: {
-    weatherAPIKey: "xxxxxx Copy from currentweather xxxxxx",
-    currencyAPIKey: "xxxxx Get an API key xxxxxx",
-    currencyPrecision: 2,
-    currencyRelativeTo: 'USD',
+    {
+      module: 'MMM-PlaceInfo',
+      position: 'bottom-center',
+      config: {
+        weatherAPIKey: "xxxxxx Copy from currentweather xxxxxx",
+        currencyAPIKey: "xxxxx Get an API key xxxxxx",
+        currencyPrecision: 2,
+        currencyRelativeTo: 'USD',
 
-    places: [
-      {
-          title: "London",
-          flag: "gb",
-          currency: "GBP",
-          timezone: "Europe/London",
-          lat: 51.5085,
-          lon: -0.1257,
-      },
-      {
-          title: "Sao Paolo",
-          flag: "br",
-          currency: "BRL",
-          timezone: "America/Sao_Paulo",
-          lat: -23.5475,
-          lon: -46.6361
-      }
-    ]
-  }
-},
+        places: [
+          {
+              title: "London",
+              flag: "gb",
+              currency: "GBP",
+              timezone: "Europe/London",
+              lat: 51.5085,
+              lon: -0.1257,
+          },
+          {
+              title: "Sao Paolo",
+              flag: "br",
+              currency: "BRL",
+              timezone: "America/Sao_Paulo",
+              lat: -23.5475,
+              lon: -46.6361
+          }
+        ]
+     }
+    },
 ```
 
-## Configuration options
+### Configuration options
 
 The following properties can be configured:
 
