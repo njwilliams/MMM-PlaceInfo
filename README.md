@@ -1,6 +1,6 @@
 # MMM-PlaceInfo
 
-This an extension for the [MagicMirror](https://github.com/MichMich/MagicMirror).
+This an extension for the [MagicMirror²](https://github.com/MagicMirrorOrg/MagicMirror).
 
 This module pulls country/place information to provide a consolidated view
 of remote locations. At the moment, local weather, exchange rate and local time
